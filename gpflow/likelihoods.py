@@ -183,6 +183,39 @@ class Poisson(Likelihood):
                    - tf.lgamma(Y + 1) + Y * tf.log(self.binsize)
         return super(Poisson, self).variational_expectations(Fmu, Fvar, Y)
 
+    
+    
+
+class NegBinom(Likelihood):
+    def __init__(self, alpha=1.0,  invlink=tf.exp, name=None):
+        super().__init__(name=name)
+        self.alpha = Parameter(
+            alpha, transform=transforms.positive, dtype=settings.float_type)
+
+        self.invlink = invlink
+
+    @params_as_tensors
+    def logp(self, F, Y):
+        """
+        P(Y) = Gamma(k + Y) / (Y! Gamma(k)) * (m / (m+k))^Y * (1 + m/k)^(-k)
+        """
+ 
+        m = self.invlink(F)
+        k = 1 / self.alpha
+                       
+        return tf.lgamma(k + Y) - tf.lgamma(Y + 1) - tf.lgamma(k) + Y * tf.log(m / (m + k)) - k * tf.log(1 + m * self.alpha) 
+        
+   
+    @params_as_tensors
+    def conditional_mean(self, F):
+        return self.invlink(F)
+      
+
+    @params_as_tensors
+    def conditional_variance(self, F):
+        m = self.invlink(F)
+        return m + m**2 * self.alpha
+        
 class Exponential(Likelihood):
     def __init__(self, invlink=tf.exp):
         super().__init__()
